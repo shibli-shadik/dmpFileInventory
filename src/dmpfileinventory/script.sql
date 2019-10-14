@@ -8,4 +8,12 @@ CREATE TABLE `file_register` (
 `created_at` datetime NOT NULL,
 `updated_at` datetime NULL,
  PRIMARY KEY (`id`)
-) 
+)
+
+CREATE TABLE `error_log` (
+`id` bigint(20) NOT NULL AUTO_INCREMENT,
+`error_for` varchar(250) NOT NULL,
+`message` varchar(1000) NOT NULL,
+`created_at` datetime NOT NULL,
+ PRIMARY KEY (`id`)
+)

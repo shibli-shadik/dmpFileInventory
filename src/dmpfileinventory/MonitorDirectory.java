@@ -18,8 +18,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class MonitorDirectory
 {
@@ -36,18 +34,18 @@ public class MonitorDirectory
     }
     
     private static void readConfigFile()
-    {
+    { 
         BufferedReader reader = null;
         String[] splitLine;
         
-        try 
+        try
         {
             String absPath = new File(MonitorDirectory.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
             
             String line = null;
             //reader = new BufferedReader(new FileReader(absPath.substring(0, absPath.length() - "dmpFileInventory.jar".length())+ "/config.txt"));
             reader = new BufferedReader(new FileReader("F:\\projects\\dmp\\config.txt"));
-                        
+            
             while((line = reader.readLine()) != null)
             {
                 splitLine = line.split("#");
@@ -71,27 +69,29 @@ public class MonitorDirectory
             }
             
             reader.close();
-        } 
-        catch (Exception ex) 
+        }
+        catch (Exception ex)
         {
-            Logger.getLogger(MonitorDirectory.class.getName()).log(Level.SEVERE, null, ex);
-        } 
-        finally 
+            saveErrorLog("Read Config File", ex.toString());
+            System.out.println(ex.toString());
+        }
+        finally
         {
-            try 
+            try
             {
                 reader.close();
-            } 
-            catch (IOException ex) 
+            }
+            catch (IOException ex)
             {
-                Logger.getLogger(MonitorDirectory.class.getName()).log(Level.SEVERE, null, ex);
+                saveErrorLog("Read Config File", ex.toString());
+                System.out.println(ex.toString());
             }
         }
     }
     
     public static void readDirectory()
     {
-        try 
+        try
         {
             //Path faxFolder = Paths.get("./fax/");
             Path faxFolder = Paths.get(SRC_FOLDER);
@@ -103,14 +103,14 @@ public class MonitorDirectory
             File file = null;
             BasicFileAttributes attrs = null;
             
-            do 
+            do
             {
                 WatchKey watchKey = watchService.take();
                 
-                for (WatchEvent event : watchKey.pollEvents()) 
+                for (WatchEvent event : watchKey.pollEvents())
                 {
                     //WatchEvent.Kind kind = event.kind();
-                    if (StandardWatchEventKinds.ENTRY_CREATE.equals(event.kind())) 
+                    if (StandardWatchEventKinds.ENTRY_CREATE.equals(event.kind()))
                     {
                         fileName = event.context().toString();
                         //System.out.println("File Name:" + fileName);
@@ -137,10 +137,11 @@ public class MonitorDirectory
                 TimeUnit.SECONDS.sleep(1);
                 
             } while (valid);
-        } 
-        catch (IOException | InterruptedException ex) 
+        }
+        catch (IOException | InterruptedException ex)
         {
-            Logger.getLogger(MonitorDirectory.class.getName()).log(Level.SEVERE, null, ex);
+            saveErrorLog("Read Directory", ex.toString());
+            System.out.println(ex.toString());
         }
     }
     
@@ -149,7 +150,7 @@ public class MonitorDirectory
         try
         {
             Class.forName("com.mysql.jdbc.Driver");
-
+            
             //Insert data
             try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
             {
@@ -166,6 +167,34 @@ public class MonitorDirectory
                 
                 preparedStmt.setTimestamp(6, timestamp);
                 preparedStmt.setTimestamp(7, timestamp);
+                
+                preparedStmt.execute();
+            }
+        }
+        catch (ClassNotFoundException | SQLException ex)
+        {
+            saveErrorLog("Save Register", ex.toString());
+            System.out.println(ex.toString());
+        }
+    }
+    
+    public static void saveErrorLog(String errorFor, String message)
+    {
+        try
+        {
+            Class.forName("com.mysql.jdbc.Driver");
+            
+            //Insert data
+            try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
+            {
+                String query = " insert into error_log (error_for, message, created_at)"
+                        + " values (?, ?, ?)";
+                PreparedStatement preparedStmt = conn.prepareStatement(query);
+                preparedStmt.setString(1, errorFor);
+                preparedStmt.setString(2, message);
+                
+                Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+                preparedStmt.setTimestamp(3, timestamp);
                 
                 preparedStmt.execute();
             }
