@@ -11,7 +11,6 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -19,18 +18,48 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
+import org.apache.log4j.RollingFileAppender;
+
 public class MonitorDirectory
 {
+    private static String OS = "W";//"L" : W = Windows, L = Linux
     private static String DB_CONN_URL = null;
     private static String DB_USER = null;
     private static String DB_PASS = null;
-    //private static String SRC_FOLDER = "F:\\projects\\dmp\\testing\\src";
     private static String SRC_FOLDER = null;
+    private static final Logger LOGGER = Logger.getLogger(MonitorDirectory.class);
     
     public static void main(String[] args)
     {
+        createLog();
+        LOGGER.info("File inventory started");
+        
         readConfigFile();
         readDirectory();
+    }
+    
+    private static void createLog()
+    {
+        // creates pattern layout
+        PatternLayout layout = new PatternLayout();
+        String conversionPattern = "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t] %c %x - %m%n";
+        layout.setConversionPattern(conversionPattern);
+        
+        // creates daily rolling file appender
+        RollingFileAppender rollingAppender = new RollingFileAppender();
+        rollingAppender.setFile("./logs/app_file_inventory.log");
+        rollingAppender.setLayout(layout);
+        rollingAppender.activateOptions();
+        rollingAppender.setMaxFileSize("10MB");
+        rollingAppender.setMaxBackupIndex(4);
+        
+        // configures the root logger
+        Logger rootLogger = Logger.getRootLogger();
+        rootLogger.setLevel(Level.DEBUG);
+        rootLogger.addAppender(rollingAppender);
     }
     
     private static void readConfigFile()
@@ -43,8 +72,15 @@ public class MonitorDirectory
             String absPath = new File(MonitorDirectory.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
             
             String line = null;
-            //reader = new BufferedReader(new FileReader(absPath.substring(0, absPath.length() - "dmpFileInventory.jar".length())+ "/config.txt"));
-            reader = new BufferedReader(new FileReader("F:\\projects\\dmp\\config.txt"));
+            
+            if("L".equals(OS))
+            {
+                reader = new BufferedReader(new FileReader(absPath.substring(0, absPath.length() - "dmpFileInventory.jar".length())+ "/config.txt"));
+            }
+            else
+            {
+                reader = new BufferedReader(new FileReader("F:\\projects\\dmp\\config.txt"));
+            }
             
             while((line = reader.readLine()) != null)
             {
@@ -72,6 +108,7 @@ public class MonitorDirectory
         }
         catch (Exception ex)
         {
+            LOGGER.error("Read Config File# " + ex.toString());
             saveErrorLog("Read Config File", ex.toString());
             System.out.println(ex.toString());
         }
@@ -83,6 +120,7 @@ public class MonitorDirectory
             }
             catch (IOException ex)
             {
+                LOGGER.error("Read Config File# " + ex.toString());
                 saveErrorLog("Read Config File", ex.toString());
                 System.out.println(ex.toString());
             }
@@ -93,6 +131,17 @@ public class MonitorDirectory
     {
         try
         {
+            String osSlash = "";
+            
+            if("L".equals(OS))
+            {
+                osSlash = "/";
+            }
+            else if("W".equals(OS))
+            {
+                osSlash = "\\";
+            }
+            
             //Path faxFolder = Paths.get("./fax/");
             Path faxFolder = Paths.get(SRC_FOLDER);
             WatchService watchService = FileSystems.getDefault().newWatchService();
@@ -101,7 +150,6 @@ public class MonitorDirectory
             boolean valid = true;
             String fileName = null;
             File file = null;
-            BasicFileAttributes attrs = null;
             
             do
             {
@@ -115,8 +163,8 @@ public class MonitorDirectory
                         fileName = event.context().toString();
                         //System.out.println("File Name:" + fileName);
                         
-                        file = new File(SRC_FOLDER + "\\" + fileName);
-                        //System.out.println("File Size:" + file.length());
+                        file = new File(SRC_FOLDER + osSlash + fileName);
+                        System.out.println("File Size:" + file.length());
                         
                         //attrs = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
                         //FileTime time = attrs.creationTime();
@@ -134,12 +182,13 @@ public class MonitorDirectory
                 
                 valid = watchKey.reset();
                 
-                TimeUnit.SECONDS.sleep(1);
+                TimeUnit.SECONDS.sleep(2);
                 
             } while (valid);
         }
         catch (IOException | InterruptedException ex)
         {
+            LOGGER.error("Read Directory# " + ex.toString());
             saveErrorLog("Read Directory", ex.toString());
             System.out.println(ex.toString());
         }
@@ -173,7 +222,7 @@ public class MonitorDirectory
         }
         catch (ClassNotFoundException | SQLException ex)
         {
-            saveErrorLog("Save Register", ex.toString());
+            LOGGER.error("Save Register# " + ex.toString());
             System.out.println(ex.toString());
         }
     }
@@ -201,6 +250,7 @@ public class MonitorDirectory
         }
         catch (ClassNotFoundException | SQLException ex)
         {
+            LOGGER.error("Save error log# " + ex.toString());
             System.out.println(ex.toString());
         }
     }
