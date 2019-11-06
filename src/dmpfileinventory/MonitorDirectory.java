@@ -17,6 +17,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
+import org.apache.log4j.DailyRollingFileAppender;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -34,11 +35,41 @@ public class MonitorDirectory
     
     public static void main(String[] args)
     {
-        createLog();
+        //createLog();
+        createLogDaily();
         LOGGER.info("File inventory started");
         
         readConfigFile();
         readDirectory();
+    }
+    
+    private static void createLogDaily()
+    {
+        // creates pattern layout
+        PatternLayout layout = new PatternLayout();
+        String conversionPattern = "%d [%p] %c %M - %m%n";
+        layout.setConversionPattern(conversionPattern);
+        
+        // creates daily rolling file appender
+        DailyRollingFileAppender rollingAppender = new DailyRollingFileAppender();
+        
+        if("L".equals(OS))
+        {
+            rollingAppender.setFile("/app/logs/fileInventory/app.log");
+        }
+        else if("W".equals(OS))
+        {
+            rollingAppender.setFile("./logs/fileInventory/app.log");
+        }
+        
+        rollingAppender.setDatePattern("'.'yyyy-MM-dd");
+        rollingAppender.setLayout(layout);
+        rollingAppender.activateOptions();
+        
+        // configures the root logger
+        Logger rootLogger = Logger.getRootLogger();
+        rootLogger.setLevel(Level.DEBUG);
+        rootLogger.addAppender(rollingAppender);
     }
     
     private static void createLog()
