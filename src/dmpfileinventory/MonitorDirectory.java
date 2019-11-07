@@ -26,7 +26,7 @@ import org.apache.log4j.RollingFileAppender;
 
 public class MonitorDirectory
 {
-    private static String OS = "W";//"L" : W = Windows, L = Linux
+    private static String OS = "L";//"L" : W = Windows, L = Linux
     private static String DB_CONN_URL = null;
     private static String DB_USER = null;
     private static String DB_PASS = null;
